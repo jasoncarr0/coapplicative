@@ -1,17 +1,27 @@
-module Control.CoApplicative.Traced (Cyclic(..)) where
+module Control.CoApplicative.Traced (FinCyclic(..)) where
 
 import Control.CoApplicative
 import Control.Comonad.Trans.Traced
+import Data.Bits (Xor)
 
 -- | A cyclic group.
 -- Every element must be equal to some power of `generator`
 -- and append must be cancellable
 --
 -- The choice of generator is unique only up to monoidal isomorphism
-class Monoid m => Cyclic m where
+class Monoid m => FinCyclic m where
   generator :: m
 
-splitCyclic :: Cyclic m => (m -> Either a b) -> Either (m -> a) (m -> b)
+instance FinCyclic () where
+  generator = ()
+
+instance FinCyclic (Xor Bool) where
+  generator = Xor True
+
+instance FinCyclic a => FinCyclic (Solo a) where
+  generator = Solo generator
+
+splitCyclic :: FinCyclic m => (m -> Either a b) -> Either (m -> a) (m -> b)
 splitCyclic t =
   case t mempty of
     Left _ -> Left findLefts
@@ -30,6 +40,6 @@ splitCyclic t =
         Left _ -> findRights (i <> generator)
         Right x -> x
 
-instance (CoApplicative w, Cyclic m) => CoApplicative (TracedT m w) where
+instance (CoApplicative w, FinCyclic m) => CoApplicative (TracedT m w) where
   nonempty = nonempty . fmap (\t -> t mempty) . runTracedT
   split = either (Left . TracedT) (Right . TracedT) . split . fmap splitCyclic . runTracedT
