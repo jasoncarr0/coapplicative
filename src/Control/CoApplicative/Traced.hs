@@ -1,8 +1,11 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Control.CoApplicative.Traced (FinCyclic(..)) where
 
 import Control.CoApplicative
 import Control.Comonad.Trans.Traced
-import Data.Bits (Xor)
+import Data.Bits (Xor(..))
+import Data.Tuple (Solo(..))
 
 -- | A cyclic group.
 -- Every element must be equal to some power of `generator`
@@ -19,7 +22,7 @@ instance FinCyclic (Xor Bool) where
   generator = Xor True
 
 instance FinCyclic a => FinCyclic (Solo a) where
-  generator = Solo generator
+  generator = MkSolo generator
 
 splitCyclic :: FinCyclic m => (m -> Either a b) -> Either (m -> a) (m -> b)
 splitCyclic t =
