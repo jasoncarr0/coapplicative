@@ -1,14 +1,18 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, TypeOperators, FlexibleContexts, UndecidableInstances #-}
 
 module Control.CoApplicative (CoApplicative(..), CoAppComonad(..)) where
 
-import Data.Void
-import Data.Functor.Identity (Identity(..))
+import Control.CoApplicative.Traced(FinCyclic(..))
 import Control.Comonad
 import Control.Comonad.Trans.Env
+import Control.Comonad.Trans.Traced
+import Data.Void
+import Data.Functor.Identity (Identity(..))
 import Data.List.NonEmpty
 import Data.Maybe (mapMaybe)
 import Data.Functor.Sum
+import Data.Coerce
+import GHC.Generics
 
 leftToMaybe :: Either a b -> Maybe a
 leftToMaybe (Left x) = Just x
@@ -54,9 +58,12 @@ class Functor f => CoApplicative f where
       maybeToLeft Nothing = Right ()
 
   -- | Zip a list through the data-structure,
-  -- discarding the context of nil values
+  -- discarding the context of nil values.
+  -- I.e. each position in the resulting
+  -- list will ``collect'' the corresponding f a
   splitList :: f [a] -> [f a]
   splitList = roll . maybe Nothing (Just . dorec) . splitMaybe . fmap unroll
+    {- TODO: make this fuse? At least on its output -}
     where
       dorec was = (fmap fst was, splitList $ fmap snd was)
 
@@ -130,7 +137,76 @@ instance CoApplicative w => CoApplicative (EnvT e w) where
   splitMaybe (EnvT e wm) = EnvT e <$> splitMaybe wm
   splitList (EnvT e wxs) = EnvT e <$> splitList wxs
 
-newtype CoAppComonad w a = CoAppComonad (w a) deriving Functor
+instance (CoApplicative w, FinCyclic m) => CoApplicative (TracedT m w) where
+  nonempty = nonempty . fmap (\t -> t mempty) . runTracedT
+  split = either (Left . TracedT) (Right . TracedT) . split . fmap splitCyclic . runTracedT
+    where
+      splitCyclic :: FinCyclic m => (m -> Either a b) -> Either (m -> a) (m -> b)
+      splitCyclic t =
+        case t mempty of
+          Left _ -> Left findLefts
+          Right _ -> Right findRights
+        where
+          -- These terminate because generator will eventually
+          -- cover the entire group, and by the calling condition
+          -- we know that at least one element will eventually
+          -- be found on the correct side of the Either
+          findLefts i =
+            case t i of
+              Left x -> x
+              Right _ -> findLefts (i <> generator)
+          findRights i =
+            case t i of
+              Left _ -> findRights (i <> generator)
+              Right x -> x
+
+instance CoApplicative f => CoApplicative (M1 i c f) where
+  nonempty (M1 fv) = nonempty fv
+  split (M1 fab) = either (Left . M1) (Right . M1) (split fab)
+  splitMaybe (M1 fa) = M1 <$> splitMaybe fa
+  splitList (M1 fxs) = M1 <$> splitList fxs
+
+-- identical to Sum
+instance (CoApplicative f, CoApplicative g) => CoApplicative (f :+: g) where
+  nonempty (L1 fv) = nonempty fv
+  nonempty (R1 gv) = nonempty gv
+  split (L1 fe) = either (Left . L1) (Right . L1) (split fe)
+  split (R1 ge) = either (Left . R1) (Right . R1) (split ge)
+  splitMaybe (L1 fm) = L1 <$> (splitMaybe fm)
+  splitMaybe (R1 gm) = R1 <$> (splitMaybe gm)
+  splitList (L1 fxs) = L1 <$> (splitList fxs)
+  splitList (R1 gxs) = R1 <$> (splitList gxs)
+
+instance (CoApplicative f, CoApplicative g) => CoApplicative (f :.: g) where
+  nonempty (Comp1 fgv) = nonempty (nonempty <$> fgv)
+  split (Comp1 fgab) =
+    either (Left . Comp1) (Right . Comp1) $
+    split (fmap split fgab)
+  splitMaybe (Comp1 fga) = fmap Comp1 $ splitMaybe $ fmap splitMaybe fga
+  splitList (Comp1 fgxs) = fmap Comp1 $ splitList $ fmap splitList fgxs
+
+instance CoApplicative Par1 where
+  nonempty (Par1 v) = v
+  split (Par1 (Left a)) = Left (Par1 a)
+  split (Par1 (Right a)) = Right (Par1 a)
+  splitMaybe (Par1 m) = Par1 <$> m
+  splitList (Par1 xs) = Par1 <$> xs
+
+instance CoApplicative f => CoApplicative (Rec1 f) where
+  nonempty (Rec1 fv) = nonempty fv
+  split (Rec1 fab) = either (Left . Rec1) (Right . Rec1) (split fab)
+  splitMaybe (Rec1 fa) = coerce $ splitMaybe fa
+  splitList (Rec1 fxs) = coerce $ splitList fxs
+
+instance (Generic1 f, CoApplicative (Rep1 f)) => CoApplicative (Generically1 f) where
+  nonempty (Generically1 fa) = nonempty (from1 fa)
+  split (Generically1 fab) =
+    either (Left . Generically1 . to1) (Right . Generically1 . to1)
+    (split (from1 fab))
+  splitMaybe (Generically1 fa) = fmap Generically1 $ fmap to1 $ splitMaybe $ from1 fa
+  splitList (Generically1 fxs) = fmap Generically1 $ fmap to1 $ splitList $ from1 fxs
+
+newtype CoAppComonad w a = CoAppComonad { runCoAppComonad :: w a } deriving (Functor)
 
 -- | There is a derivable instance for Comonads,
 -- but this will not be compatible with context shifts for most
@@ -141,3 +217,10 @@ instance Comonad w => CoApplicative (CoAppComonad w) where
     case extract wab of
       Left x -> Left (CoAppComonad $ fmap (either id (const x)) wab)
       Right y -> Right (CoAppComonad $ fmap (either (const y) id) wab)
+
+instance Comonad w => Comonad (CoAppComonad w) where
+  extract = extract . runCoAppComonad
+  {- coerce gets blocked by unknown roles sadly -}
+  duplicate (CoAppComonad wa) = CoAppComonad (fmap CoAppComonad (duplicate wa))
+
+
