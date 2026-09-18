@@ -136,7 +136,7 @@ instance CoApplicative w => CoApplicative (EnvT e w) where
 -- to replace non-matching parts of the context in a consistent way.
 --
 -- A finite cyclic group allows us to choose a new index for any non-matching
--- location in a way that always agrees and agrees with Monoidal shifts
+-- location in a way that always agrees with Monoidal shifts
 --
 -- The FinCyclic class is presented in Control.CoApplicative.Traced but this
 -- instance is here to avoid an orphan instance.
