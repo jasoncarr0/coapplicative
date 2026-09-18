@@ -80,12 +80,7 @@ instance CoApplicative Identity where
 -- This is compatible
   split (Identity (Right y)) = Right (Identity y)
 
--- | Default CoApplicative for NonEmpty filters
--- to those elements which match the head element.
--- Compatible with the Comonad instance,
---   so nom-empty has "good" pattern matching, in which matching
---   on a value produces a new value with a consistent view of the context
---   
+-- | Filters out elements which do not match the head.
 instance CoApplicative NonEmpty where
   nonempty (v :| _) = v
   split (Left x :| rest) = Left (x :| mapMaybe leftToMaybe rest)
