@@ -11,6 +11,7 @@ import Data.Void
 import Data.Functor.Identity (Identity(..))
 import Data.List.NonEmpty
 import Data.Maybe (mapMaybe)
+import Data.Bifunctor
 import Data.Functor.Sum
 import Data.Coerce
 import GHC.Generics
@@ -89,8 +90,8 @@ instance CoApplicative NonEmpty where
 instance (CoApplicative f, CoApplicative g) => CoApplicative (Sum f g) where
   nonempty (InL fv) = nonempty fv
   nonempty (InR gv) = nonempty gv
-  split (InL fe) = either (Left . InL) (Right . InL) (split fe)
-  split (InR ge) = either (Left . InR) (Right . InR) (split ge)
+  split (InL fe) = bimap InL InL (split fe)
+  split (InR ge) = bimap InR InR (split ge)
   splitMaybe (InL fm) = InL <$> (splitMaybe fm)
   splitMaybe (InR gm) = InR <$> (splitMaybe gm)
   splitList (InL fxs) = InL <$> (splitList fxs)
@@ -128,7 +129,7 @@ instance CoApplicative ((,,,,,,) a b c d e f) where
 
 instance CoApplicative w => CoApplicative (EnvT e w) where
   nonempty (EnvT _ wv) = nonempty wv
-  split (EnvT e we) = either (Left . EnvT e) (Right . EnvT e) (split we)
+  split (EnvT e we) = bimap (EnvT e) (EnvT e) (split we)
   splitMaybe (EnvT e wm) = EnvT e <$> splitMaybe wm
   splitList (EnvT e wxs) = EnvT e <$> splitList wxs
 
@@ -142,7 +143,7 @@ instance CoApplicative w => CoApplicative (EnvT e w) where
 -- instance is here to avoid an orphan instance.
 instance (CoApplicative w, FinCyclic m) => CoApplicative (TracedT m w) where
   nonempty = nonempty . fmap (\t -> t mempty) . runTracedT
-  split = either (Left . TracedT) (Right . TracedT) . split . fmap splitCyclic . runTracedT
+  split = coerce . split . fmap splitCyclic . runTracedT
     where
       splitCyclic :: FinCyclic m => (m -> Either a b) -> Either (m -> a) (m -> b)
       splitCyclic t =
@@ -165,7 +166,7 @@ instance (CoApplicative w, FinCyclic m) => CoApplicative (TracedT m w) where
 
 instance CoApplicative f => CoApplicative (M1 i c f) where
   nonempty (M1 fv) = nonempty fv
-  split (M1 fab) = either (Left . M1) (Right . M1) (split fab)
+  split (M1 fab) = coerce (split fab)
   splitMaybe (M1 fa) = M1 <$> splitMaybe fa
   splitList (M1 fxs) = M1 <$> splitList fxs
 
@@ -173,8 +174,8 @@ instance CoApplicative f => CoApplicative (M1 i c f) where
 instance (CoApplicative f, CoApplicative g) => CoApplicative (f :+: g) where
   nonempty (L1 fv) = nonempty fv
   nonempty (R1 gv) = nonempty gv
-  split (L1 fe) = either (Left . L1) (Right . L1) (split fe)
-  split (R1 ge) = either (Left . R1) (Right . R1) (split ge)
+  split (L1 fe) = bimap L1 L1 (split fe)
+  split (R1 ge) = bimap R1 R1 (split ge)
   splitMaybe (L1 fm) = L1 <$> (splitMaybe fm)
   splitMaybe (R1 gm) = R1 <$> (splitMaybe gm)
   splitList (L1 fxs) = L1 <$> (splitList fxs)
@@ -183,7 +184,7 @@ instance (CoApplicative f, CoApplicative g) => CoApplicative (f :+: g) where
 instance (CoApplicative f, CoApplicative g) => CoApplicative (f :.: g) where
   nonempty (Comp1 fgv) = nonempty (nonempty <$> fgv)
   split (Comp1 fgab) =
-    either (Left . Comp1) (Right . Comp1) $
+    coerce $
     split (fmap split fgab)
   splitMaybe (Comp1 fga) = fmap Comp1 $ splitMaybe $ fmap splitMaybe fga
   splitList (Comp1 fgxs) = fmap Comp1 $ splitList $ fmap splitList fgxs
@@ -197,14 +198,14 @@ instance CoApplicative Par1 where
 
 instance CoApplicative f => CoApplicative (Rec1 f) where
   nonempty (Rec1 fv) = nonempty fv
-  split (Rec1 fab) = either (Left . Rec1) (Right . Rec1) (split fab)
+  split (Rec1 fab) = coerce (split fab)
   splitMaybe (Rec1 fa) = coerce $ splitMaybe fa
   splitList (Rec1 fxs) = coerce $ splitList fxs
 
 instance (Generic1 f, CoApplicative (Rep1 f)) => CoApplicative (Generically1 f) where
   nonempty (Generically1 fa) = nonempty (from1 fa)
   split (Generically1 fab) =
-    either (Left . Generically1 . to1) (Right . Generically1 . to1)
+    bimap (Generically1 . to1) (Generically1 . to1)
     (split (from1 fab))
   splitMaybe (Generically1 fa) = fmap Generically1 $ fmap to1 $ splitMaybe $ from1 fa
   splitList (Generically1 fxs) = fmap Generically1 $ fmap to1 $ splitList $ from1 fxs
