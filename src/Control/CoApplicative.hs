@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor, TypeOperators, FlexibleContexts, UndecidableInstances #-}
 
+-- | Provides CoApplicative typeclass and instances.
 module Control.CoApplicative (CoApplicative(..), CoAppComonad(..)) where
 
 import Control.CoApplicative.Traced(FinCyclic(..))
@@ -59,7 +60,7 @@ class Functor f => CoApplicative f where
   -- | Zip a list through the data-structure,
   -- discarding the context of nil values.
   -- I.e. each position in the resulting
-  -- list will ``collect'' the corresponding f a
+  -- list will "collect" the corresponding f a
   splitList :: f [a] -> [f a]
   splitList = roll . maybe Nothing (Just . dorec) . splitMaybe . fmap unroll
     {- TODO: make this fuse? At least on its output -}
@@ -136,6 +137,14 @@ instance CoApplicative w => CoApplicative (EnvT e w) where
   splitMaybe (EnvT e wm) = EnvT e <$> splitMaybe wm
   splitList (EnvT e wxs) = EnvT e <$> splitList wxs
 
+-- | In order to have a consistent view of the context, we must be able
+-- to replace non-matching parts of the context in a consistent way.
+--
+-- A finite cyclic group allows us to choose a new index for any non-matching
+-- location in a way that always agrees and agrees with Monoidal shifts
+--
+-- The FinCyclic class is presented in Control.CoApplicative.Traced but this
+-- instance is here to avoid an orphan instance.
 instance (CoApplicative w, FinCyclic m) => CoApplicative (TracedT m w) where
   nonempty = nonempty . fmap (\t -> t mempty) . runTracedT
   split = either (Left . TracedT) (Right . TracedT) . split . fmap splitCyclic . runTracedT
@@ -205,11 +214,14 @@ instance (Generic1 f, CoApplicative (Rep1 f)) => CoApplicative (Generically1 f) 
   splitMaybe (Generically1 fa) = fmap Generically1 $ fmap to1 $ splitMaybe $ from1 fa
   splitList (Generically1 fxs) = fmap Generically1 $ fmap to1 $ splitList $ from1 fxs
 
+-- | There is a derivable instance for any Comonad,
+-- but this will not be compatible with context shifts for most instances.
+-- 
+-- In the context of pattern-matching, this means that reaching the same branch
+-- two different ways may result in conflicting views of the surrounding context.
+-- (only the context which lands on the same side of the branch is consistent)
 newtype CoAppComonad w a = CoAppComonad { runCoAppComonad :: w a } deriving (Functor)
 
--- | There is a derivable instance for Comonads,
--- but this will not be compatible with context shifts for most
--- Comonads (primarily only the products)
 instance Comonad w => CoApplicative (CoAppComonad w) where
   nonempty (CoAppComonad wv) = extract wv
   split (CoAppComonad wab) =

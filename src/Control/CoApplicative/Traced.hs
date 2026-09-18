@@ -6,14 +6,12 @@
 module Control.CoApplicative.Traced (FinCyclic(..)) where
 
 import Data.Bits (Xor(..))
-import Data.Tuple (Solo(..))
 
 -- | A cyclic group.
 -- Every element must be equal to some power of `generator`
 -- and append must be cancellable
 --
--- The choice of generator is unique only up to monoidal isomorphism
---
+-- The choice of generator is unique only up to monoidal isomorphism.
 class Monoid m => FinCyclic m where
   generator :: m
 
@@ -22,6 +20,3 @@ instance FinCyclic () where
 
 instance FinCyclic (Xor Bool) where
   generator = Xor True
-
-instance FinCyclic a => FinCyclic (Solo a) where
-  generator = MkSolo generator
