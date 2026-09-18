@@ -23,10 +23,16 @@ name:               coapplicative
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
-synopsis:           A dual to applicative: oplax monoidal functors over Either
+synopsis:           A dual to applicative: covariant functors which can split
 
 -- A longer description of the package.
--- description:
+description:        Provides covariant oplax monoidal functors. These functors
+                    can be "split" and support pattern-matching while
+                    retaining the functorial context.
+                    Several default instances are provided for Comonads that
+                    agree with their Comonad instances,
+                    as well as a wrapper for non-law-abiding instances on
+                    any Comonad.
 
 -- The license under which the package is released.
 license:            MIT

@@ -42,7 +42,6 @@ rightToMaybe (Right x) = Just x
 -- for the next appropriate element via adding a generator.
 -- ℤ3 and up have multiple generators.
 -- Although this example is not identical, these possibilities are isomorphic
-
 class Functor f => CoApplicative f where
   nonempty :: f Void -> Void
   split :: f (Either a b) -> Either (f a) (f b)
