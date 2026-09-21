@@ -41,9 +41,3 @@ values of x'.
 Since this list is finite, we're guaranteed to either
 find a previous value of x', or reach the end of
 the list.
-
-
-Another (less useful) instance is given by Traced
-when the monoid is actually a cyclic group.
-In this case, when we can't find an appropriate value,
-we "look ahead" to see the next instance.

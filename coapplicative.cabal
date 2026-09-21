@@ -30,14 +30,14 @@ synopsis:           Duals to Applicative: covariant functors which can split
 
 -- A longer description of the package.
 description:        Provides covariant oplax monoidal functors and
-                    cocartesian costrong functors.
+                    coapplicatives which have extraction/costrength.
                     These functors can be "split" and support
                     pattern-matching while retaining the functorial context.
                     Costrong functors can split off a single element.
                     Several default instances are provided for Comonads that
                     agree with their Comonad instances,
-                    as well as a wrapper for non-law-abiding instances on
-                    any Comonad.
+                    as well as a wrapper for (usually non-lawful)
+                    instances on any Comonad.
 
 -- The license under which the package is released.
 license:            MIT
