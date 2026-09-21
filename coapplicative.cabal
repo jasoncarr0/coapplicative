@@ -70,7 +70,7 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  Control.CoApplicative
+    exposed-modules:  Control.Coapplicative, Control.Coapplicative.Traced
 
     -- Modules included in this library but not exported.
     -- other-modules:
