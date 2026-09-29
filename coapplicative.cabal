@@ -20,15 +20,20 @@ name:               coapplicative
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.0
+version:            0.2.0.0
 
 -- A short (one-line) description of the package.
-synopsis:           A dual to applicative: covariant functors which can split
+synopsis:           Duals to Applicative: covariant functors which can split
+                    and extract.
+                    Provides separate typeclasses for cocartesian costrength
+                    and splitting alone, which together imply Coapplicative.
 
 -- A longer description of the package.
-description:        Provides covariant oplax monoidal functors. These functors
-                    can be "split" and support pattern-matching while
-                    retaining the functorial context.
+description:        Provides covariant oplax monoidal functors and
+                    cocartesian costrong functors.
+                    These functors can be "split" and support
+                    pattern-matching while retaining the functorial context.
+                    Costrong functors can split off a single element.
                     Several default instances are provided for Comonads that
                     agree with their Comonad instances,
                     as well as a wrapper for non-law-abiding instances on
