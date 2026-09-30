@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | This module includes the TinyCyclic typeclass,
--- which is used for the CoApplciative instance of Traced
--- (although that instance is in the main module Control.CoApplicative)
-module Control.CoApplicative.Traced (TinyGroup(..)) where
+-- which is used for the Coapplciative instance of Traced
+-- (although that instance is in the main module Control.Coapplicative)
+module Control.Coapplicative.Traced (TinyGroup(..)) where
 
 import Data.Bits (Xor(..))
 
