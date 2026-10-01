@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor, TypeOperators, FlexibleContexts, UndecidableInstances #-}
 
 -- | Provides Coapplicative typeclass and instances.
-module Control.Coapplicative (Splittable(..), Coapplicative(..), CoappComonad(..)) where
+module Control.Coapplicative (Splittable(..), Coapplicative(..), ComonadCoapp(..)) where
 
 import Control.Coapplicative.Traced
 import Control.Comonad
