@@ -294,24 +294,24 @@ instance (Generic1 f, Coapplicative (Rep1 f)) => Coapplicative (Generically1 f) 
 -- In the context of pattern-matching, this means that reaching the same branch
 -- two different ways may result in conflicting views of the surrounding context.
 -- (only the context which lands on the same side of the branch is consistent)
-newtype CoappComonad w a = CoappComonad { runCoappComonad :: w a } deriving (Functor)
+newtype ComonadCoapp w a = ComonadCoapp { runComonadCoapp :: w a } deriving (Functor)
 
-instance Comonad w => Splittable (CoappComonad w) where
-  nonempty (CoappComonad wv) = extract wv
-  split (CoappComonad wab) =
+instance Comonad w => Splittable (ComonadCoapp w) where
+  nonempty (ComonadCoapp wv) = extract wv
+  split (ComonadCoapp wab) =
     case extract wab of
-      Left x -> Left (CoappComonad $ fmap (either id (const x)) wab)
-      Right y -> Right (CoappComonad $ fmap (either (const y) id) wab)
-instance Comonad w => Coapplicative (CoappComonad w) where
-  copure (CoappComonad wx) = extract wx
-  costrength (CoappComonad wab) =
+      Left x -> Left (ComonadCoapp $ fmap (either id (const x)) wab)
+      Right y -> Right (ComonadCoapp $ fmap (either (const y) id) wab)
+instance Comonad w => Coapplicative (ComonadCoapp w) where
+  copure (ComonadCoapp wx) = extract wx
+  costrength (ComonadCoapp wab) =
     case extract wab of
       Left x -> Left x
-      Right y -> Right (CoappComonad $ fmap (either (const y) id) wab)
+      Right y -> Right (ComonadCoapp $ fmap (either (const y) id) wab)
 
-instance Comonad w => Comonad (CoappComonad w) where
-  extract = extract . runCoappComonad
+instance Comonad w => Comonad (ComonadCoapp w) where
+  extract = extract . runComonadCoapp
   {- coerce gets blocked by unknown roles sadly -}
-  duplicate (CoappComonad wa) = CoappComonad (fmap CoappComonad (duplicate wa))
+  duplicate (ComonadCoapp wa) = ComonadCoapp (fmap ComonadCoapp (duplicate wa))
 
 
