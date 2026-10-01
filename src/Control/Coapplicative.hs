@@ -29,20 +29,21 @@ rightToMaybe (Right x) = Just x
 -- Laws include associativity, and compatibility with fmap
 -- (which implies identity laws)
 --
--- `reassoc . either id split . split = either split id . split . fmap reassoc`
--- where reassoc is the unique total function of type `(Either a (Either b c)) -> Either (Either a b) c`
--- `split . fmap (either f g) = either (fmap f) (fmap g) . split`
--- `split . fmap Left = Left`
--- `split . fmap Right = Right`
+-- > reassoc . bimap id split . split = bimap split id . split . fmap reassoc
+-- where reassoc is the unique total function of type @(Either a (Either b c)) -> Either (Either a b) c@
+-- > split . fmap (either f g) = bimap (fmap f) (fmap g) . split
+-- > split . fmap Left = Left
+-- > split . fmap Right = Right
 --
--- Every Comonad is Splittable, but not often in a
--- way that is compatible with the Comonad structure.
--- In particular, dup must distribute with split:
+-- Comonads should ensure that their Splittable instance agrees with
+-- their Comonad instance:
 --
--- `duplicate . split = fmap split . split . duplicate`
+-- > bimap extract extract . split = extract
+-- > bimap duplicate duplicate . split = fmap split . split . duplicate
 class Functor f => Splittable f where
   nonempty :: f Void -> Void
   split :: f (Either a b) -> Either (f a) (f b)
+  {-# MINIMAL nonempty, split #-}
 
   -- | Filter Maybe through the data-structure along Just,
   -- discarding the context of Nothing values
@@ -72,25 +73,21 @@ class Functor f => Splittable f where
       roll (Just (x, xs)) = x : xs
 
 
--- | A CoApplicative has both a cocartesian costrength and is splittable.
--- This is dual to the situation with Applicative, but all functors in
--- Haskell are implicitly strong with respect to product.
+-- | A Coapplicative has both a cocartesian costrength and is splittable.
+-- This differs from Applicatives because the cartesian strength in Haskell
+-- is implicit and unique for every Functor.
 --
--- Every Comonad can be made into a Coapplicative, but not always
--- in a way that is compatible with duplicate.
+-- Similarly to Splittable, every Comonad can be made into a Coapplicative,
+-- but not always in a way that is compatible with duplicate.
+-- The lack of a unique costrength breaks the dualization.
 --
--- Hence the situation with Applicative and Monad almost dualizes but
--- does not, because not functors are not uniquely costrong with respect to
--- sums.
---
--- `copure` is derivable from the other operations in a dual way to
--- Applicative's `pure`. Optimized functions may be provided but
--- must agree.
+-- copure and costrength are inter-derivable for Splittable functors.
 class Splittable f => Coapplicative f where
   costrength :: f (Either a b) -> Either a (f b)
   costrength = bimap copure id . split
   copure :: f a -> a
   copure = either id (absurd . nonempty) . costrength . fmap Left
+  {-# MINIMAL costrength | copure #-}
 
 instance Splittable Identity where
   nonempty (Identity v) = v
