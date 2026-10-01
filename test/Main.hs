@@ -4,8 +4,8 @@
 module Main (main) where
 
 import GHC.Generics
-import Control.CoApplicative
-import Control.CoApplicative.Traced
+import Control.Coapplicative
+import Control.Coapplicative.Traced
 import Data.List.NonEmpty
 import Data.Functor.Sum
 import Data.Functor.Identity
@@ -24,7 +24,7 @@ data Ex a
   | C (NonEmpty a)
   | D (Int, String, a)
   deriving stock (Generic, Generic1, Functor, Show)
-  deriving CoApplicative via (Generically1 Ex)
+  deriving (Splittable, Coapplicative) via (Generically1 Ex)
 
 testCompiles :: IO ()
 testCompiles = print (split (B x))

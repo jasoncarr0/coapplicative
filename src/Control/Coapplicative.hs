@@ -77,10 +77,10 @@ class Functor f => Splittable f where
 -- Haskell are implicitly strong with respect to product.
 --
 -- Every Comonad can be made into a Coapplicative, but not always
--- in a way that is compatible with the structure of duplicate.
+-- in a way that is compatible with duplicate.
 --
 -- Hence the situation with Applicative and Monad almost dualizes but
--- does not, because not all functors are costrong with respect to
+-- does not, because not functors are not uniquely costrong with respect to
 -- sums.
 --
 -- `copure` is derivable from the other operations in a dual way to
