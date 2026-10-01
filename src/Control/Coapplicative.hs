@@ -31,6 +31,7 @@ rightToMaybe (Right x) = Just x
 --
 -- > reassoc . bimap id split . split = bimap split id . split . fmap reassoc
 -- where reassoc is the unique total function of type @(Either a (Either b c)) -> Either (Either a b) c@
+--
 -- > split . fmap (either f g) = bimap (fmap f) (fmap g) . split
 -- > split . fmap Left = Left
 -- > split . fmap Right = Right
