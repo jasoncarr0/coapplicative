@@ -67,11 +67,10 @@ genEx ga =
     C <$> Gen.nonEmpty (Range.constant 0 20) ga,
     D <$> ((,,) <$> someInt <*> genString <*> ga)
   ]
-  
 
 prop_nonEmptyDupSplit :: Property
 prop_nonEmptyDupSplit = property $ do
-  xs <- forAll $ Gen.nonEmpty (Range.linear 1 20) $ Gen.either someInt someInt
+  xs <- forAll $ Gen.nonEmpty (Range.linear 0 20) $ Gen.either someInt someInt
   bimap duplicate duplicate (split xs) === split (fmap split (duplicate xs))
 
 
