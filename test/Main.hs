@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass, DeriveGeneric, DeriveFunctor, DerivingStrategies, DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Main (main) where
 
@@ -7,6 +8,7 @@ import GHC.Generics
 import Control.Coapplicative
 import Control.Coapplicative.Traced
 import Data.List.NonEmpty
+import Data.Functor.Classes (Eq1(..), Show1(..))
 import Data.Functor.Sum
 import Data.Functor.Identity
 import Control.Comonad
@@ -25,27 +27,55 @@ data Ex a
   | D (Int, String, a)
   deriving stock (Generic, Generic1, Functor, Show)
   deriving (Splittable, Coapplicative) via (Generically1 Ex)
+instance Eq1 Ex where
+  liftEq e x y =
+    case (x, y) of
+      (A fx, A fy) -> liftEq e fx fy
+      (B x, B y) -> e x y
+      (C xs, C ys) -> liftEq e xs ys
+      (D (i1, s1, x), D (i2, s2, y)) ->
+        i1 == i2 && s1 == s2 && e x y
+      _ -> False
+instance Eq a => Eq (Ex a) where
+  (==) = liftEq (==)
+instance Show1 Ex where
+  liftShowsPrec showA shows i ex _ = "TODO Show1 Ex"
 
 testCompiles :: IO ()
-testCompiles = print (split (B x))
+testCompiles = do
+  print (split (B x))
  where
   x :: Either Int Bool
   x = Left 4
 
 someInt :: Gen Int
-someInt = Gen.int $ Range.constant 0 10
+someInt = Gen.int $ Range.constant 0 9
 
 someInt2 :: Gen Int
-someInt2 = Gen.int $ Range.constant 11 20
+someInt2 = Gen.int $ Range.constant 10 19
 
 someInt3 :: Gen Int
-someInt3 = Gen.int $ Range.constant 21 30
+someInt3 = Gen.int $ Range.constant 20 29
+
+genEx :: Gen a -> Gen (Ex a)
+genEx ga =
+  let genString = Gen.string (Range.constant 0 5) Gen.binit in
+  Gen.choice [
+    A <$> (Gen.choice [pure (InL . Identity), pure (InR . Identity)] <*> ga),
+    B <$> ga,
+    C <$> Gen.nonEmpty (Range.constant 0 20) ga,
+    D <$> ((,,) <$> someInt <*> genString <*> ga)
+  ]
+  
 
 prop_nonEmptyDupSplit :: Property
 prop_nonEmptyDupSplit = property $ do
   xs <- forAll $ Gen.nonEmpty (Range.linear 1 20) $ Gen.either someInt someInt
   bimap duplicate duplicate (split xs) === split (fmap split (duplicate xs))
 
+
+-- TODO use a newtype instead so we can verify all properties easily;
+-- mechanized though so lower priority
 prop_tracedXorDupSplit :: Property
 prop_tracedXorDupSplit = property $ do
   i <- forAll $ Gen.either someInt someInt
@@ -64,6 +94,45 @@ prop_tracedXorDupSplit = property $ do
   annotate $ show $ fromFn' $ duplicate f
   fromFns (bimap duplicate duplicate (split f)) ===
     fromFns (split (fmap split (duplicate f)))
+
+-- Use only when we find something that isn't a comonad :)
+pred_validSplit :: (Splittable f, Eq1 f, Show1 f) => (forall a. Gen a -> Gen (f a)) -> Property
+pred_validSplit gen = property $ do
+  xs <- forAll $ gen (Gen.either someInt someInt2)
+  let left :: a -> Either a Bool
+      left = Left
+      right :: a -> Either Bool a
+      right = Right
+  split (left <$> xs) === Left xs
+  split (right <$> xs) === Right xs
+  f <- (*) <$> forAll someInt
+  g <- (+) <$> forAll someInt
+
+  bimap (fmap f) (fmap g) (split xs) === split (bimap f g <$> xs)
+
+pred_validComonadCoapplicative :: (Coapplicative w, Comonad w, Eq1 w, Show1 w)
+                               => (forall a. Gen a -> Gen (w a)) -> Property
+pred_validComonadCoapplicative gen = property $ do
+  xs <- forAll $ gen (Gen.either someInt someInt2)
+  -- copy-paste to not regen
+  let left :: a -> Either a Bool
+      left = Left
+      right :: a -> Either Bool a
+      right = Right
+  split (left <$> xs) === Left xs
+  split (right <$> xs) === Right xs
+  f <- (*) <$> forAll someInt
+  g <- (+) <$> forAll someInt
+
+  -- nonempty laws are trivial
+  bimap extract extract (split xs) === extract xs
+  bimap duplicate duplicate (split xs) === split (fmap split (duplicate xs))
+
+  copure xs === extract xs
+  bimap copure id (split xs) === costrength xs
+  (costrength . fmap costrength) (duplicate xs) ===
+    bimap id duplicate (costrength xs)
+
 
 {-
 data Z3 = Z0 | Z1 | Z2
@@ -111,13 +180,15 @@ prop_tracedDupSplit = property $ do
 
 testProps :: IO Bool
 testProps =
+  let genNE = Gen.nonEmpty (Range.linear 1 20) in
   checkParallel $ Group "Properties" [
-      ("nonempty_dup_split", prop_nonEmptyDupSplit),
-      ("traced_xor_dup_split", prop_tracedXorDupSplit)
+      ("traced_xor_dup_split", prop_tracedXorDupSplit),
+      ("nonempty_valid", pred_validComonadCoapplicative genNE),
+      ("generics_split", pred_validSplit genEx)
     ]
 
 main :: IO ()
 main = do
-  testCompiles
+  let _ = testCompiles
   _ <- testProps
   pure ()
