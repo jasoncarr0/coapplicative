@@ -59,6 +59,7 @@ someInt3 = Gen.int $ Range.constant 20 29
 
 genEx :: Gen a -> Gen (Ex a)
 genEx ga =
+  -- doesn't matter
   let genString = Gen.string (Range.constant 0 5) Gen.binit in
   Gen.choice [
     A <$> (Gen.choice [pure (InL . Identity), pure (InR . Identity)] <*> ga),

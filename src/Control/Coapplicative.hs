@@ -59,7 +59,7 @@ class Functor f => Splittable f where
   -- | Zip a list through the data-structure,
   -- discarding the context of nil values.
   -- I.e. each position in the resulting
-  -- list will "collect" the corresponding f a
+  -- list will "collect" the corresponding f a context
   splitList :: f [a] -> [f a]
   splitList = roll . maybe Nothing (Just . dorec) . splitMaybe . fmap unroll
     {- TODO: make this fuse? At least on its output -}
@@ -74,7 +74,7 @@ class Functor f => Splittable f where
       roll (Just (x, xs)) = x : xs
 
 
--- | A Coapplicative has both a cocartesian costrength and is splittable.
+-- | A Coapplicative has both a cocartesian costrength and is Splittable.
 -- This differs from Applicatives because the cartesian strength in Haskell
 -- is implicit and unique for every Functor.
 --
@@ -201,7 +201,7 @@ instance (Splittable w, TinyGroup m) => Splittable (TracedT m w) where
   nonempty = nonempty . fmap (\t -> t mempty) . runTracedT
   split = coerce . split . fmap splitCyclic . runTracedT
     where
-      -- This is somehwa
+      -- This is somewhat overkill now
       splitCyclic :: TinyGroup m => (m -> Either a b) -> Either (m -> a) (m -> b)
       splitCyclic t =
         case t mempty of
