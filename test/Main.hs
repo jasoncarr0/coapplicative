@@ -124,6 +124,8 @@ pred_validComonadCoapplicative gen = property $ do
   f <- (*) <$> forAll someInt
   g <- (+) <$> forAll someInt
 
+  bimap (fmap f) (fmap g) (split xs) === split (bimap f g <$> xs)
+
   -- nonempty laws are trivial
   bimap extract extract (split xs) === extract xs
   bimap duplicate duplicate (split xs) === split (fmap split (duplicate xs))
